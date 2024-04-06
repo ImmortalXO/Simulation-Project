@@ -29,7 +29,7 @@ public:
 		timeBetweenArrivals = 1;
 	}
 
-	void addCustomerToQueue(const Customer &customer) {
+	int addCustomerToQueue(const Customer &customer) {
 		queue.push(customer);
 	}
 
@@ -61,7 +61,7 @@ public:
 		timeBetweenArrivals = time;
 	}
 
-	int getWaitTimeOfRemainingCustomers() {
+	int getWaitTimeOfRemainingCustomers() const {
 		int waitTime = 0;
 		std::queue<Customer> temp = queue;
 		while (!temp.empty()) {
@@ -80,7 +80,7 @@ private:
 	int transactionTime;
 	Customer customer;
 public:
-	Server(int id) : serverId(serverId), status(0), transactionTime(0) {};
+	Server(int id) : serverId(serverId), status(0), transactionTime(0), customer(customer) {};
 
 	void setServerId(int target) {
 		target = serverId;
@@ -162,9 +162,17 @@ public:
 		}
 	}
 
-	void updateBusyServerTransactionTimes() {
-		for (auto& s : serverList) {
-
+	int updateBusyServerTransactionTimes() {
+		for (auto& serv : serverList) {
+			if (serv.getStatus() == 1) {
+				serv.updateTransactionTime();
+			}
+			else if (serv.getTransactionTime() == 0) {
+				customersServed++;
+				totalWaitTime += serv.getCustomerWaitTime();
+				serv.setStatus(0);
+				return serv.getCustomerId(), serv.getServerId();
+			}
 		}
 	}
 
