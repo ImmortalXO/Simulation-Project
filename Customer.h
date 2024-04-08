@@ -6,69 +6,78 @@
 
 using namespace std;
 
-class Customer
-{
+class Customer {
 private:
-	int id;
-	int wait;
+	int customerId;
+	int waitTime;
 public:
-	Customer(int id) : id(id), wait(0) {};
-	int getId() const { return id; };
-	//void setId(int target) { target = id; };
-	int getWait() const { return wait; };
-	void incrementWait() { wait++; };
+	Customer(int id) : customerId(id), waitTime(0) {};
+	void setCustomerId(int id) {
+		customerId = id;
+	}
+
+	int getCustomerId() const {
+		return customerId;
+	}
+
+	void updateWaitTime() {
+		waitTime++;
+	}
+
+	int getWaitTime() const {
+		return waitTime;
+	}
 };
 
 class CustomerQueue
 {
 private:
-	queue<Customer> queue;
+	queue<Customer> customerQueue;
 	int timeBetweenArrivals;
 public:
-	CustomerQueue() {
-		timeBetweenArrivals = 1;
-	}
+	CustomerQueue() : timeBetweenArrivals(0) {};
 
-	int addCustomerToQueue(const Customer &customer) {
-		queue.push(customer);
+	int addCustomerToQueue(const Customer& newCustomer) {
+		customerQueue.push(newCustomer);
+		return newCustomer.getCustomerId();
 	}
 
 	Customer removeCustomerFromQueue() {
-		Customer customer = queue.front();
-		queue.pop();
-		return customer;
+		Customer cust = customerQueue.front();
+		customerQueue.pop();
+		return cust;
 	}
 
-	bool hasCustomerArrived(int currentTime) const {
+	bool hasCustomerArrived(int currentTime) {
 		return currentTime % timeBetweenArrivals == 0;
 	}
 
 	void updateCustomerWaitTimes() {
-		int size = queue.size();
-		for (int i = 0; i < size; ++i) {
-			Customer& customer = queue.front();
-			customer.incrementWait();
-			queue.push(customer);
-			queue.pop();
+		int size = customerQueue.size();
+		for (int i = 0; i < size; i++) {
+			Customer cust = customerQueue.front();
+			customerQueue.pop();
+			cust.updateWaitTime();
+			customerQueue.push(cust);
 		}
 	}
 
-	int getCustomersInQueue() const {
-		return queue.size();
+	int getNumberOfCustomersInQueue() const {
+		return customerQueue.size();
 	}
 
-	int setTimeBetweenArrivals(int time) {
+	void setTimeBetweenArrivals(int time) {
 		timeBetweenArrivals = time;
 	}
 
-	int getWaitTimeOfRemainingCustomers() const {
-		int waitTime = 0;
-		std::queue<Customer> temp = queue;
-		while (!temp.empty()) {
-			waitTime += temp.front().getWait();
-			temp.pop();
+	double getWaitTimeOfCustomersInQueue() const {
+		int totalWaitTime = 0;
+		int size = customerQueue.size();
+		for (int i = 0; i < size; ++i) {
+			Customer cust = customerQueue.front();
+			totalWaitTime += cust.getWaitTime();
 		}
-		return waitTime;
+		return customerQueue.empty() ? 0.0 : static_cast<double>(totalWaitTime) / customerQueue.size();
 	}
 };
 
@@ -78,23 +87,23 @@ private:
 	int serverId;
 	int status;
 	int transactionTime;
-	Customer customer;
+	Customer cust;
 public:
-	Server(int id) : serverId(serverId), status(0), transactionTime(0), customer(customer) {};
+	Server(int id) : serverId(id), status(0), transactionTime(0), cust(0) {}
 
-	void setServerId(int target) {
-		target = serverId;
+	void setServerId(int id) {
+		serverId = id;
 	}
 
 	int getServerId() const {
 		return serverId;
 	}
 
-	void setStatus(int currentStatus) {
-		status = currentStatus;
+	void setServerStatus(int stat) {
+		status = stat;
 	}
 
-	int getStatus() const {
+	int getServerStatus() const {
 		return status;
 	}
 
@@ -106,21 +115,28 @@ public:
 		return transactionTime;
 	}
 
-	void updateTransactionTime() {
+	void updateServerTransactionTime() {
 		transactionTime--;
 	}
 
 	int getCustomerWaitTime() const {
-		return customer.getWait();
+		return cust.getWaitTime();
 	}
 
 	int getCustomerId() const {
-		return customer.getId();
+		return cust.getCustomerId();
 	}
 
-	void addCustomerToServer(const Customer &newCustomer) {
-		customer = newCustomer;
+	void addCustomerToServer(const Customer& newCustomer) {
+		cust = newCustomer;
 		status = 1;
+	}
+
+	Customer removeCustomerFromServer() {
+		Customer newCustomer = cust;
+		cust = Customer(0);
+		status = 0;
+		return newCustomer;
 	}
 };
 
@@ -128,31 +144,40 @@ class ServerList
 {
 private:
 	vector<Server> serverList;
+	int serverCount;
 	int transactionTime;
-	int customersServed;
+	int totalCustomersServed;
 	int totalWaitTime;
 public:
-	ServerList(int serverAmount, int transactionTime): transactionTime(transactionTime), customersServed(0), totalWaitTime(0) {
-		for (int i = 0; i < serverAmount; ++i) {
-			serverList.emplace_back(i + 1); // more optimized way instead of push_back
+	ServerList(int serverCount, int transactionTime) : serverCount(serverCount), transactionTime(transactionTime), totalCustomersServed(0), totalWaitTime(0) {
+		for (int i = 0; i < serverCount; i++) {
+			serverList.push_back(Server(i + 1));
 		}
-	};
-
-	void addServerToList(const Server& serv) {
-		serverList.push_back(serv);
 	}
 
-	int findFreeServer() const {
+	void addServerToList(const Server& server) {
+		serverList.push_back(server);
+	}
+
+	int findFreeServer() {
 		for (int i = 0; i < serverList.size(); ++i) {
-			if (serverList[i].getStatus() == 0) {
+			if (serverList[i].getServerStatus() == 0) {
 				return i;
 			}
 		}
 		return -1;
 	}
 
-	void setTransactionTime(int time) {
-		transactionTime = time;
+	int getTotalCustomersServed() const {
+		return totalCustomersServed;
+	}
+
+	int getTotalWaitTime() const {
+		return totalWaitTime;
+	}
+
+	int getServerTransactionTime() const {
+		return transactionTime;
 	}
 
 	void assignCustomerToFreeServer(const Customer& newCustomer) {
@@ -162,25 +187,20 @@ public:
 		}
 	}
 
-	int updateBusyServerTransactionTimes() {
-		for (auto& serv : serverList) {
-			if (serv.getStatus() == 1) {
-				serv.updateTransactionTime();
-			}
-			else if (serv.getTransactionTime() == 0) {
-				customersServed++;
-				totalWaitTime += serv.getCustomerWaitTime();
-				serv.setStatus(0);
-				return serv.getCustomerId(), serv.getServerId();
+	// pair<> type to be able to return two values.
+	pair<int, int> updateBusyServerTransactionTimes() {
+		for (int i = 0; i < serverList.size(); ++i) {
+			if (serverList[i].getServerStatus() == 1) {
+				serverList[i].updateServerTransactionTime();
+				if (serverList[i].getTransactionTime() == 0) {
+					Customer newCustomer = serverList[i].removeCustomerFromServer();
+					totalCustomersServed++;
+					totalWaitTime += newCustomer.getWaitTime();
+					serverList[i].setServerStatus(0);
+					return make_pair(serverList[i].getServerId(), serverList[i].getCustomerId());
+				}
 			}
 		}
-	}
-
-	int getCustomersServed() const {
-		return customersServed;
-	}
-
-	int getTotalWaitTimes() const {
-		return totalWaitTime;
+		return make_pair(-1, -1);
 	}
 };
